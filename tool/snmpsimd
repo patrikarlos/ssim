@@ -1,0 +1,88 @@
+#! /bin/sh
+
+### BEGIN INIT INFO
+# Provides:          snmpsimd
+# Required-Start:
+# Required-Stop:
+# Default-Start:
+# Default-Stop:      6
+# Short-Description: Keeps snmpsimd running
+# Description:
+### END INIT INFO
+
+SNMPSIMD_BIN=/opt/ssim/snmpsimd.sh
+SNMPSIMD_CONFIG=/etc/default/snmpsimd
+NAME="snmpsimd.sh"
+NAME2="snmpsimd.pl"
+
+if [ `id -u` != 0 ]; then
+                echo "not executing as root"
+fi
+
+if [ ! -e $SNMPSIMD_CONFIG ]; then
+                echo "config file $SNMPSIMD_CONFIG does not exist"
+                exit 1
+fi
+
+if [ ! -w /var/log/snmpsimd.log ]; then
+                echo "need write permission to /var/log/snmpsimd.sh"
+                exit 1
+fi
+
+. /lib/lsb/init-functions
+. $SNMPSIMD_CONFIG
+
+start_dumper(){
+                log_daemon_msg "Starting SNMPSIMd " "$NAME"
+                if killall -s0 $NAME 2> /dev/null; then
+                                echo "dumper is already running"
+                                return 1
+                fi
+                start-stop-daemon --start --quiet -b --exec $SNMPSIMD_BIN --  
+                RET="$?"
+                log_end_msg $RET
+                return $RET
+}
+
+stop_dumper(){
+                log_daemon_msg "Stopping SNMPSIMd " "$NAME"
+                if ! killall -s0 $NAME 2> /dev/null; then
+                    echo "$NAME isn't running"
+#                                return 1
+                else 
+                    killall -9 "$NAME" 2> /dev/null
+		fi
+
+                log_daemon_msg "Stopping SNMPSIMd " "$NAME2"
+                if ! killall -s0 $NAME2 2> /dev/null; then
+		    echo "$NAME2 isn't running";
+		else
+                    killall -9 "$NAME2" 2> /dev/null
+		fi
+
+                log_end_msg 0
+}
+case "$1" in
+                start)
+                                start_dumper || exit 1
+                                ;;
+    
+    stop)
+                                stop_dumper || exit 1
+                                ;;
+
+                restart)
+                                stop_dumper
+                                sleep 2
+                                start_dumper || exit 1
+                                ;;
+
+                status)
+                                status_of_proc "$NAME" "SNMPSIMd"
+                                ;;
+                
+    *)
+                                echo "Usage: $0 start|stop|restart|status" >&2
+                                exit 1
+                                ;;
+esac
